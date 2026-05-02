@@ -1,7 +1,7 @@
-# Bunu yapmak için resmi bir Ubuntu imajı kullanıyoruz
-FROM ubuntu:22.04
+# 1. Derleme aşaması (Builder)
+FROM ubuntu:22.04 AS builder
 
-# Gerekli bağımlılıkları yüklüyoruz
+# Gerekli bağımlılıkları yükle
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
     git \
@@ -13,29 +13,34 @@ RUN apt-get update && \
     gperf \
     && rm -rf /var/lib/apt/lists/*
 
-# Telegram Bot API kaynak kodunu klonluyoruz
+# Kaynak kodunu klonla ve derle
 WORKDIR /usr/src
 RUN git clone --recursive https://github.com/tdlib/telegram-bot-api.git
-
-# Kaynak kodu derliyoruz
 WORKDIR /usr/src/telegram-bot-api/build
 RUN cmake -DCMAKE_BUILD_TYPE=Release .. && \
     cmake --build . --target install
 
-# Çalışma zamanı için bir kullanıcı oluşturuyoruz (güvenlik için)
+# ==============================================
+
+# 2. Çalıştırma aşaması (Runtime)
+FROM ubuntu:22.04
+
+# Sadece çalışma zamanı için gerekli kütüphaneleri yükle
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    libssl-dev \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Derlenmiş binary'yi builder aşamasından kopyala
+COPY --from=builder /usr/local/bin/telegram-bot-api /usr/local/bin/telegram-bot-api
+
+# Kullanıcı oluştur (güvenlik)
 RUN useradd -m -s /bin/bash botuser
-
-# Derlenmiş binary'nin bulunduğu dizini PATH'e ekliyoruz
-ENV PATH="/usr/local/bin:${PATH}"
-
-# Çalışma dizinini ayarlıyoruz
-WORKDIR /home/botuser
 USER botuser
+WORKDIR /home/botuser
 
-# Bot API sunucusunun varsayılan portunu dışarıya açıyoruz
-EXPOSE 8081
-
-# Sunucuyu başlatmak için hazırız
+# API_ID ve API_HASH environment variable'larını dışarıdan alacağız
+# Uygulama başlatma komutu (API_ID ve API_HASH zaten ortamda olacak)
 ENTRYPOINT ["telegram-bot-api"]
-# Varsayılan ayarları belirtiyoruz; bu ayarlar çalıştırılırken ezilebilir
-CMD ["--help"]
+CMD ["--api-id=$API_ID", "--api-hash=$API_HASH", "--local", "--http-port=8081", "--http-ip-address=0.0.0.0"]
