@@ -40,7 +40,7 @@ RUN useradd -m -s /bin/bash botuser
 USER botuser
 WORKDIR /home/botuser
 
-# API_ID ve API_HASH environment variable'larını dışarıdan alacağız
-# Uygulama başlatma komutu (API_ID ve API_HASH zaten ortamda olacak)
-ENTRYPOINT ["telegram-bot-api"]
-CMD ["--api-id=$API_ID", "--api-hash=$API_HASH", "--local", "--http-port=8081", "--http-ip-address=0.0.0.0"]
+# !! DEĞİŞİKLİK BURADA !! 
+# Environment variable'ları çalışma anında doğrudan komuta yazalım.
+# Kendi API_ID ve API_HASH'inizi buraya yazın.
+CMD ["telegram-bot-api", "--api-id=33757614", "--api-hash=14d38ae49320c5206cc498a06947dd27", "--local", "--http-port=8081", "--http-ip-address=0.0.0.0"]
